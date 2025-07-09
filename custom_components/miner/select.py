@@ -103,11 +103,18 @@ class MinerPowerModeSwitch(CoordinatorEntity[MinerCoordinator], SelectEntity):
 
     async def async_select_option(self, option: str) -> None:
         """Change the selected option."""
+        if not self.coordinator.available:
+            _LOGGER.warning(f"{self.coordinator.config_entry.title}: Miner is not available, cannot select option.")
+            return
+
         option_map = {
             "High": MiningModeHPM,
             "Normal": MiningModeNormal,
             "Low": MiningModeLPM,
         }
-        cfg = await self.coordinator.miner.get_config()
-        cfg.mining_mode = option_map[option]()
-        await self.coordinator.miner.send_config(cfg)
+        try:
+            cfg = await self.coordinator.miner.get_config()
+            cfg.mining_mode = option_map[option]()
+            await self.coordinator.miner.send_config(cfg)
+        except pyasic.APIError as e:
+            _LOGGER.error(f"{self.coordinator.config_entry.title}: Failed to select option due to API error: {e}")

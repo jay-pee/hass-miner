@@ -1,8 +1,10 @@
 {
   "name": "ludeeus/integration_blueprint",
-  "image": "mcr.microsoft.com/vscode/devcontainers/python:0-3.11-bullseye",
-  "postCreateCommand": "scripts/setup",
-  "forwardPorts": [8123],
+  "image": "mcr.microsoft.com/vscode/devcontainers/python:3.13-bullseye",
+  "postCreateCommand": "scripts/setup && npm install -g @google/gemini-cli",
+  "forwardPorts": [
+    8123
+  ],
   "portsAttributes": {
     "8123": {
       "label": "Home Assistant",
@@ -35,6 +37,7 @@
   },
   "remoteUser": "vscode",
   "features": {
-    "ghcr.io/devcontainers/features/rust:1": {}
+    "ghcr.io/devcontainers/features/rust:1": {},
+    "ghcr.io/devcontainers/features/node:1": {}
   }
 }

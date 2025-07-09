@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+import pyasic
 
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
@@ -76,29 +77,53 @@ class MinerActiveSwitch(CoordinatorEntity[MinerCoordinator], SwitchEntity):
         """Turn on miner."""
         miner = self.coordinator.miner
         _LOGGER.debug(f"{self.coordinator.config_entry.title}: Resume mining.")
+        if not self.coordinator.available:
+            _LOGGER.warning(f"{self.coordinator.config_entry.title}: Miner is not available, cannot turn on.")
+            return
+
+        miner = self.coordinator.miner
+        _LOGGER.debug(f"{self.coordinator.config_entry.title}: Resume mining.")
         if not miner.supports_shutdown:
             raise TypeError(f"{miner}: Shutdown not supported.")
-        self._attr_is_on = True
-        await miner.resume_mining()
-        if miner.supports_power_modes:
-            config = await miner.get_config()
-            config.mining_mode = self._last_mining_mode
-            await miner.send_config(config)
-        self.updating_switch = True
-        self.async_write_ha_state()
+        
+        try:
+            self._attr_is_on = True
+            await miner.resume_mining()
+            if miner.supports_power_modes:
+                config = await miner.get_config()
+                config.mining_mode = self._last_mining_mode
+                await miner.send_config(config)
+            self.updating_switch = True
+            self.async_write_ha_state()
+        except pyasic.APIError as e:
+            _LOGGER.error(f"{self.coordinator.config_entry.title}: Failed to turn on miner due to API error: {e}")
+            self._attr_is_on = False # Revert state if operation fails
+            self.async_write_ha_state()
 
     async def async_turn_off(self) -> None:
         """Turn off miner."""
         miner = self.coordinator.miner
         _LOGGER.debug(f"{self.coordinator.config_entry.title}: Stop mining.")
+        if not self.coordinator.available:
+            _LOGGER.warning(f"{self.coordinator.config_entry.title}: Miner is not available, cannot turn off.")
+            return
+
+        miner = self.coordinator.miner
+        _LOGGER.debug(f"{self.coordinator.config_entry.title}: Stop mining.")
         if not miner.supports_shutdown:
             raise TypeError(f"{miner}: Shutdown not supported.")
-        if miner.supports_power_modes:
-            self._last_mining_mode = self.coordinator.data["config"].mining_mode
-        self._attr_is_on = False
-        await miner.stop_mining()
-        self.updating_switch = True
-        self.async_write_ha_state()
+        
+        try:
+            if miner.supports_power_modes:
+                self._last_mining_mode = self.coordinator.data["config"].mining_mode
+            self._attr_is_on = False
+            await miner.stop_mining()
+            self.updating_switch = True
+            self.async_write_ha_state()
+        except pyasic.APIError as e:
+            _LOGGER.error(f"{self.coordinator.config_entry.title}: Failed to turn off miner due to API error: {e}")
+            self._attr_is_on = True # Revert state if operation fails
+            self.async_write_ha_state()
 
     @callback
     def _handle_coordinator_update(self) -> None:
