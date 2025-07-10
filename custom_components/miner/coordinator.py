@@ -225,9 +225,4 @@ class MinerCoordinator(DataUpdateCoordinator):
             },
         }
 
-        if miner_data.config:
-            data["miner_sensors"]["active_preset_name"] = miner_data.config.mining_mode.active_preset.name
-        else:
-            data["miner_sensors"]["active_preset_name"] = None
-
         return data
